@@ -40,6 +40,8 @@ import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.coroutineScope
+import androidx.webkit.UserAgentMetadata
+import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import androidx.work.CoroutineWorker
@@ -219,10 +221,57 @@ fun WebView.configureForParser(userAgentOverride: String?) = with(settings) {
 	if (userAgentOverride != null) {
 		userAgentString = userAgentOverride
 	}
+	this@configureForParser.applyBrowserUserAgentMetadata(userAgentString)
 	val cookieManager = CookieManager.getInstance()
 	cookieManager.setAcceptCookie(true)
 	cookieManager.setAcceptThirdPartyCookies(this@configureForParser, true)
+	if (WebViewFeature.isFeatureSupported(WebViewFeature.REQUESTED_WITH_HEADER_ALLOW_LIST)) {
+		@Suppress("DEPRECATION")
+		WebSettingsCompat.setRequestedWithHeaderOriginAllowList(this, emptySet())
+	}
 }
+
+private fun WebView.applyBrowserUserAgentMetadata(userAgent: String) {
+	if (!WebViewFeature.isFeatureSupported(WebViewFeature.USER_AGENT_METADATA)) {
+		return
+	}
+	val fullVersion = CHROME_VERSION_REGEX.find(userAgent)?.groupValues?.getOrNull(1)?.takeIf { it.isNotBlank() }
+		?: return
+	val majorVersion = fullVersion.substringBefore('.')
+	val brandVersions = listOf(
+		UserAgentMetadata.BrandVersion.Builder()
+			.setBrand("Chromium")
+			.setMajorVersion(majorVersion)
+			.setFullVersion(fullVersion)
+			.build(),
+		UserAgentMetadata.BrandVersion.Builder()
+			.setBrand("Google Chrome")
+			.setMajorVersion(majorVersion)
+			.setFullVersion(fullVersion)
+			.build(),
+		UserAgentMetadata.BrandVersion.Builder()
+			.setBrand("Not A;Brand")
+			.setMajorVersion("99")
+			.setFullVersion("99.0.0.0")
+			.build(),
+	)
+	WebSettingsCompat.setUserAgentMetadata(
+		settings,
+		UserAgentMetadata.Builder()
+			.setBrandVersionList(brandVersions)
+			.setFullVersion(fullVersion)
+			.setPlatform("Android")
+			.setPlatformVersion(Build.VERSION.RELEASE)
+			.setArchitecture("")
+			.setModel("")
+			.setMobile(true)
+			.setBitness(UserAgentMetadata.BITNESS_DEFAULT)
+			.setWow64(false)
+			.build(),
+	)
+}
+
+private val CHROME_VERSION_REGEX = Regex("""Chrome/([\d.]+)""")
 
 fun Context.restartApplication() {
 	val activity = findActivity()

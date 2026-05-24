@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import android.webkit.WebView
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.core.view.isInvisible
 import androidx.lifecycle.lifecycleScope
@@ -52,7 +53,7 @@ class CloudFlareActivity : BaseBrowserActivity(), CloudFlareCallback {
 			finishAfterTransition()
 			return
 		}
-		cfClient = CloudFlareClient(cookieJar, this, adBlock, url)
+		cfClient = CloudFlareClient(cookieJar, this, null, url)
 		viewBinding.webView.webViewClient = cfClient
 		lifecycleScope.launch {
 			try {
@@ -62,7 +63,7 @@ class CloudFlareActivity : BaseBrowserActivity(), CloudFlareCallback {
 			}
 			if (savedInstanceState == null) {
 				onTitleChanged(getString(R.string.loading_), url)
-				viewBinding.webView.loadUrl(url)
+				viewBinding.webView.loadCaptchaUrl(url)
 			}
 		}
 	}
@@ -130,7 +131,7 @@ class CloudFlareActivity : BaseBrowserActivity(), CloudFlareCallback {
 			val targetUrl = intent?.dataString?.toHttpUrlOrNull()
 			if (targetUrl != null) {
 				clearCfCookies(targetUrl)
-				viewBinding.webView.loadUrl(targetUrl.toString())
+				viewBinding.webView.loadCaptchaUrl(targetUrl.toString())
 			}
 		}
 	}
@@ -139,6 +140,10 @@ class CloudFlareActivity : BaseBrowserActivity(), CloudFlareCallback {
 		cookieJar.removeCookies(url) { cookie ->
 			CloudFlareHelper.isCloudFlareCookie(cookie.name)
 		}
+	}
+
+	private fun WebView.loadCaptchaUrl(url: String) {
+		loadUrl(url, CAPTCHA_REQUEST_HEADERS)
 	}
 
 	class Contract : ActivityResultContract<CloudFlareProtectedException, Boolean>() {
@@ -154,5 +159,15 @@ class CloudFlareActivity : BaseBrowserActivity(), CloudFlareCallback {
 	companion object {
 
 		const val TAG = "CloudFlareActivity"
+
+		private val CAPTCHA_REQUEST_HEADERS = mapOf(
+			"Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+			"Accept-Language" to "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
+			"Upgrade-Insecure-Requests" to "1",
+			"Sec-Fetch-Dest" to "document",
+			"Sec-Fetch-Mode" to "navigate",
+			"Sec-Fetch-Site" to "none",
+			"Sec-Fetch-User" to "?1",
+		)
 	}
 }
