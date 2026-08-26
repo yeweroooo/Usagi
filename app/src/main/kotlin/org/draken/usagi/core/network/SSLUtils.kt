@@ -15,48 +15,57 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocketFactory
 import javax.net.ssl.X509TrustManager
 
+private val trustAllSslFactory: Pair<SSLSocketFactory, X509TrustManager> by lazy {
+	val trustAllCerts =
+		object : X509TrustManager {
+			override fun checkClientTrusted(
+				chain: Array<X509Certificate>,
+				authType: String,
+			) = Unit
+
+			override fun checkServerTrusted(
+				chain: Array<X509Certificate>,
+				authType: String,
+			) = Unit
+
+			override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+		}
+	val sslContext = SSLContext.getInstance("SSL")
+	sslContext.init(null, arrayOf(trustAllCerts), SecureRandom())
+	sslContext.socketFactory to trustAllCerts
+}
+
 @SuppressLint("CustomX509TrustManager")
 fun OkHttpClient.Builder.disableCertificateVerification() =
 	also { builder ->
 		runCatching {
-			val trustAllCerts =
-				object : X509TrustManager {
-					override fun checkClientTrusted(
-						chain: Array<X509Certificate>,
-						authType: String,
-					) = Unit
-
-					override fun checkServerTrusted(
-						chain: Array<X509Certificate>,
-						authType: String,
-					) = Unit
-
-					override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
-				}
-			val sslContext = SSLContext.getInstance("SSL")
-			sslContext.init(null, arrayOf(trustAllCerts), SecureRandom())
-			val sslSocketFactory: SSLSocketFactory = sslContext.socketFactory
-			builder.sslSocketFactory(sslSocketFactory, trustAllCerts)
+			val (factory, trustManager) = trustAllSslFactory
+			builder.sslSocketFactory(factory, trustManager)
 			builder.hostnameVerifier { _, _ -> true }
 		}.onFailure {
 			it.printStackTraceDebug()
 		}
 	}
 
+private var extraCertificates: HandshakeCertificates? = null
+
 fun OkHttpClient.Builder.installExtraCertificates(context: Context) =
 	also { builder ->
-		val certificatesBuilder =
-			HandshakeCertificates
-				.Builder()
-				.addPlatformTrustedCertificates()
-		val assets = context.assets.list("").orEmpty()
-		for (path in assets) {
-			if (path.endsWith(".pem")) {
-				val cert = loadCert(context, path) ?: continue
-				certificatesBuilder.addTrustedCertificate(cert)
+		val certificates =
+			extraCertificates ?: run {
+				val certificatesBuilder =
+					HandshakeCertificates
+						.Builder()
+						.addPlatformTrustedCertificates()
+				val assets = context.assets.list("").orEmpty()
+				for (path in assets) {
+					if (path.endsWith(".pem")) {
+						val cert = loadCert(context, path) ?: continue
+						certificatesBuilder.addTrustedCertificate(cert)
+					}
+				}
+				certificatesBuilder.build().also { extraCertificates = it }
 			}
-		}
-		val certificates = certificatesBuilder.build()
 		builder.sslSocketFactory(certificates.sslSocketFactory(), certificates.trustManager)
 	}
 

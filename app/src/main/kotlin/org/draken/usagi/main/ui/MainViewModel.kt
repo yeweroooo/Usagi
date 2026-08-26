@@ -18,7 +18,6 @@ import org.draken.usagi.core.util.ext.call
 import org.draken.usagi.explore.data.MangaSourcesRepository
 import org.draken.usagi.history.data.HistoryRepository
 import org.draken.usagi.main.domain.ReadingResumeEnabledUseCase
-import org.draken.usagi.settings.sources.manage.plugins.UpdatePluginsProvider
 import org.draken.usagi.tracker.domain.TrackingRepository
 import tsuki.model.Manga
 import javax.inject.Inject
@@ -32,7 +31,6 @@ class MainViewModel
 		trackingRepository: TrackingRepository,
 		private val settings: AppSettings,
 		private val sourcesRepository: MangaSourcesRepository,
-		private val updatePluginsProvider: UpdatePluginsProvider,
 		readingResumeEnabledUseCase: ReadingResumeEnabledUseCase,
 	) : BaseViewModel() {
 		var isUpdateDialogShown = false // alway shows at startup
@@ -104,13 +102,5 @@ class MainViewModel
 
 		fun setIncognitoMode(isEnabled: Boolean) {
 			settings.isIncognitoModeEnabled = isEnabled
-		}
-
-		fun runAutoUpdate() {
-			if (settings.isAutoPluginsEnabled) {
-				launchJob(Dispatchers.Default) {
-					updatePluginsProvider.runAutoUpdate(settings)
-				}
-			}
 		}
 	}

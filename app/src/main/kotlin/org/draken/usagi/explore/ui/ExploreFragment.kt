@@ -127,11 +127,6 @@ class ExploreFragment :
 		exploreAdapter = null
 	}
 
-	override fun onResume() {
-		super.onResume()
-		viewModel.runAutoUpdate()
-	}
-
 	override fun onListHeaderClick(
 		item: ListHeader,
 		view: View,

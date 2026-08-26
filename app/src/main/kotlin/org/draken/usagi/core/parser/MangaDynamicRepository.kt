@@ -31,6 +31,7 @@ class MangaDynamicRepository
 
 		@Throws(Exception::class)
 		fun load(pluginDir: File): List<PluginLoadException> {
+			installBundledPlugins()
 			val dir = context.codeCacheDir.absolutePath
 			val parent = context.classLoader
 			val sources = mutableListOf<MangaSource>()
@@ -176,6 +177,26 @@ class MangaDynamicRepository
 			} as MangaParser
 		}
 
+		private fun installBundledPlugins() {
+			val dir = PluginFileLoader.pluginsDir(context)
+			val names =
+				try {
+					context.assets.list(BUNDLED_PLUGINS_ASSET_DIR).orEmpty()
+				} catch (_: IOException) {
+					return
+				}
+			for (name in names) {
+				if (!name.endsWith(".jar")) continue
+				try {
+					context.assets.open("$BUNDLED_PLUGINS_ASSET_DIR/$name").use { input ->
+						PluginFileLoader.copyFromStream(File(dir, name), input)
+					}
+				} catch (_: Throwable) {
+					// keep whatever is already installed
+				}
+			}
+		}
+
 		private fun resolve(source: MangaSource): PluginMangaSource? {
 			(source as? PluginMangaSource)?.let { return it }
 			val sourceClassLoader = source.javaClass.classLoader
@@ -212,5 +233,9 @@ class MangaDynamicRepository
 			if (a.size != b.size) return false
 			for (i in a.indices) if (a[i].name != b[i].name) return false
 			return true
+		}
+
+		private companion object {
+			const val BUNDLED_PLUGINS_ASSET_DIR = "plugins"
 		}
 	}

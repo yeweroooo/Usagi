@@ -30,3 +30,7 @@
 /.kotlin/
 /.idea/AndroidProjectSystem.xml
 /.idea/discordrp.xml
+
+# Release signing
+keystore.properties
+keystore/*.jks

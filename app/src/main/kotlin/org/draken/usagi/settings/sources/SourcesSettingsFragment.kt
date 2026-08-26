@@ -11,7 +11,6 @@ import dagger.hilt.android.AndroidEntryPoint
 import org.draken.usagi.R
 import org.draken.usagi.core.model.getTitle
 import org.draken.usagi.core.nav.router
-import org.draken.usagi.core.parser.MangaDynamicRepository
 import org.draken.usagi.core.prefs.AppSettings
 import org.draken.usagi.core.prefs.TriStateOption
 import org.draken.usagi.core.ui.BasePreferenceFragment
@@ -29,9 +28,6 @@ class SourcesSettingsFragment :
 	BasePreferenceFragment(R.string.remote_sources),
 	SharedPreferences.OnSharedPreferenceChangeListener {
 	private val viewModel by viewModels<SourcesSettingsViewModel>()
-
-	@Inject
-	lateinit var mangaDynamicRepository: MangaDynamicRepository
 
 	@Inject
 	lateinit var sourcesRepository: MangaSourcesRepository
@@ -88,7 +84,6 @@ class SourcesSettingsFragment :
 						it > 0 -> getString(R.string.available_d, it)
 						else -> null
 					}
-				hideEmptyCatalog()
 			}
 		}
 		findPreference<TwoStatePreference>(AppSettings.KEY_HANDLE_LINKS)?.let { pref ->
@@ -97,13 +92,7 @@ class SourcesSettingsFragment :
 			}
 		}
 		updateEnableAllDependencies()
-		updatePluginsSummary()
 		settings.subscribe(this)
-	}
-
-	override fun onResume() {
-		super.onResume()
-		updatePluginsSummary()
 	}
 
 	override fun onDestroyView() {
@@ -139,18 +128,5 @@ class SourcesSettingsFragment :
 
 	private fun updateEnableAllDependencies() {
 		findPreference<Preference>(AppSettings.KEY_SOURCES_CATALOG)?.isEnabled = !settings.isAllSourcesEnabled
-	}
-
-	private fun updatePluginsSummary() {
-		val count = mangaDynamicRepository.get().size
-		findPreference<Preference>("plugins_manager")?.summary =
-			resources.getQuantityStringSafe(R.plurals.items, count, count)
-		hideEmptyCatalog()
-	}
-
-	private fun hideEmptyCatalog() {
-		val catalog = viewModel.availableSourcesCount.value
-		val imported = mangaDynamicRepository.get().size
-		findPreference<Preference>(AppSettings.KEY_REMOTE_SOURCES)?.isVisible = !(catalog == 0 && imported == 0)
 	}
 }

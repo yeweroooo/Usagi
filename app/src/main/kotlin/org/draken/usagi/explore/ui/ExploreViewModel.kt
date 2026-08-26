@@ -33,7 +33,6 @@ import org.draken.usagi.list.ui.model.ListHeader
 import org.draken.usagi.list.ui.model.ListModel
 import org.draken.usagi.list.ui.model.LoadingState
 import org.draken.usagi.list.ui.model.MangaCompactListModel
-import org.draken.usagi.settings.sources.manage.plugins.UpdatePluginsProvider
 import org.draken.usagi.suggestions.domain.SuggestionRepository
 import tsuki.model.Manga
 import tsuki.model.MangaSource
@@ -49,7 +48,6 @@ class ExploreViewModel
 		private val exploreRepository: ExploreRepository,
 		private val sourcesRepository: MangaSourcesRepository,
 		private val shortcutManager: AppShortcutManager,
-		private val updatePluginsProvider: UpdatePluginsProvider,
 	) : BaseViewModel() {
 		val isGrid =
 			settings.observeAsStateFlow(
@@ -142,14 +140,6 @@ class ExploreViewModel
 		fun respondSuggestionTip(isAccepted: Boolean) {
 			settings.isSuggestionsEnabled = isAccepted
 			settings.closeTip(TIP_SUGGESTIONS)
-		}
-
-		fun runAutoUpdate() {
-			if (settings.isAutoPluginsEnabled) {
-				launchJob(Dispatchers.Default) {
-					updatePluginsProvider.runAutoUpdate(settings)
-				}
-			}
 		}
 
 		fun sourcesSnapshot(ids: LongSet): List<MangaSourceInfo> =

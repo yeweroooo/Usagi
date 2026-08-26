@@ -388,7 +388,6 @@ class MainActivity :
 					if (settings.isAdBlockEnabled) {
 						startService(Intent(this@MainActivity, AdListUpdateService::class.java))
 					}
-					viewModel.runAutoUpdate()
 				}
 			}
 		} catch (e: IllegalStateException) {
